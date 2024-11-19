@@ -1,0 +1,16 @@
+youtube_summarizer/
+├── requirements.txt
+├── static/
+│   ├── css/
+│   │   └── styles.css
+│   └── js/
+│       └── main.js
+├── templates/
+│   └── index.html
+└── main.py
+
+1. Create a .env file
+2. pip install -r requirements.txt
+3. python main.py
+4. place this in address bar http://localhost:8000
+
