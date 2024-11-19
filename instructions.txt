@@ -13,4 +13,5 @@ youtube_summarizer/
 2. pip install -r requirements.txt
 3. python main.py
 4. place this in address bar http://localhost:8000
+5. put yt url in bar e.g https://www.youtube.com/watch?v=zWPe_CUR4yU
 

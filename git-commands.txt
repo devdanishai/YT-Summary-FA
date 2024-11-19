@@ -6,4 +6,11 @@ git branch -M main
 git remote add origin https://github.com/devdanishai/YT-Summary-FA.git
 git push -u origin main
 
+<<<<<<< HEAD
 git add .
+=======
+git status                      # Check which files have been changed
+git add .                       # Stage all changes
+git commit -m "Describe changes"  # Commit changes with a message
+git push                        # Push changes to GitHub
+>>>>>>> 1dcb9693fe2a4aeb2b140148155398491f769f13
