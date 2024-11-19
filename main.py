@@ -33,10 +33,18 @@ load_dotenv()
 # Configure Google Gemini API
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# Prompt for the Google Gemini API
-prompt = """You are a YouTube video summarizer. You will be taking the transcript text
-and summarizing the entire video and providing the important summary in points
-within 250 words. Please provide the summary of the text given here: """
+# Updated prompt for structured response
+prompt = """You are a YouTube video summarizer. Format your response as follows:
+
+Summary:
+[Main summary paragraph]
+
+Key Points:
+1. [First key point]
+2. [Second key point]
+3. [Third key point]
+
+Keep the entire summary within 250 words. Here's the text to summarize: """
 
 
 class VideoRequest(BaseModel):
@@ -53,7 +61,11 @@ async def read_root(request: Request):
 async def process_video(video_request: VideoRequest):
     try:
         # Extract video ID
-        video_id = video_request.youtube_url.split("=")[1]
+        if "=" in video_request.youtube_url:
+            video_id = video_request.youtube_url.split("=")[1]
+        else:
+            # Handle shortened URLs
+            video_id = video_request.youtube_url.split("/")[-1]
 
         # Get available transcript languages
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
@@ -71,14 +83,53 @@ async def process_video(video_request: VideoRequest):
 
         # Generate summary using Gemini
         model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(prompt + transcript)
 
-        return {"summary": response.text}
+        # Add specific instructions to clean and format the text
+        generation_config = {
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "top_k": 40,
+            "max_output_tokens": 1024,
+        }
+
+        safety_settings = [
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+            },
+        ]
+
+        response = model.generate_content(
+            prompt + transcript,
+            generation_config=generation_config,
+            safety_settings=safety_settings
+        )
+
+        # Format the response
+        formatted_response = response.text.replace("*", "").strip()
+
+        return {"summary": formatted_response}
 
     except TranscriptsDisabled:
         raise HTTPException(status_code=400, detail="Transcripts are disabled for this video.")
     except NoTranscriptFound:
         raise HTTPException(status_code=400, detail="No transcript found for this video.")
+    except ValueError as e:
+        if "Invalid YouTube video URL" in str(e):
+            raise HTTPException(status_code=400, detail="Invalid YouTube video URL")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
